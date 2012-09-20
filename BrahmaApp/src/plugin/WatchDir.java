@@ -37,11 +37,13 @@
 package plugin;
 
 import java.nio.file.*;
+
 import static java.nio.file.StandardWatchEventKinds.*;
 import static java.nio.file.LinkOption.*;
 import java.nio.file.attribute.*;
 import java.io.*;
 import java.util.*;
+
 
 /**
  * Example to watch a directory (or tree) for changes to files.
@@ -53,9 +55,6 @@ public class WatchDir {
     private final Map<WatchKey,Path> keys;
     private final boolean recursive;
     private boolean trace = false;
-    
-    // C.R. Change
-    private PluginManager manager;
 
     @SuppressWarnings("unchecked")
     static <T> WatchEvent<T> cast(WatchEvent<?> event) {
@@ -100,8 +99,7 @@ public class WatchDir {
     /**
      * Creates a WatchService and registers the given directory
      */
-    WatchDir(PluginManager manager, Path dir, boolean recursive) throws IOException {
-    	this.manager = manager;
+    WatchDir(Path dir, boolean recursive) throws IOException {
         this.watcher = FileSystems.getDefault().newWatchService();
         this.keys = new HashMap<WatchKey,Path>();
         this.recursive = recursive;
@@ -117,11 +115,18 @@ public class WatchDir {
         // enable trace after initial registration
         this.trace = true;
     }
-
+    
     /**
-     * Process all events for keys queued to the watcher
+     * Process one event for keys queued to the watcher
      */
-    void processEvents() {
+    Map<DirectoryAction, Path> processEvent() {
+//    	List<Path> toLoad = new ArrayList<Path>();
+//    	List<Path> toUnload = new ArrayList<Path>();
+//    	Map<DirectoryAction, List<Path>> loadMap = new HashMap<DirectoryAction, List<Path>>();
+//    	loadMap.put(DirectoryAction.LOAD, toLoad);
+//    	loadMap.put(DirectoryAction.UNLOAD, toUnload);
+    	Map<DirectoryAction, Path> loadMap = new HashMap<DirectoryAction, Path>();
+    	
         for (;;) {
 
             // wait for key to be signalled
@@ -129,7 +134,7 @@ public class WatchDir {
             try {
                 key = watcher.take();
             } catch (InterruptedException x) {
-                return;
+                return loadMap;
             }
 
             Path dir = keys.get(key);
@@ -153,23 +158,19 @@ public class WatchDir {
 
                 // print out event
                 System.out.format("%s: %s\n", event.kind().name(), child);
-                
-                // C.R. Changes
-            	if(this.manager != null) {
-            		try {
-                        if(kind == ENTRY_CREATE) {
-                        	this.manager.loadBundle(child);
-                        }
-                        else if(kind == ENTRY_DELETE) {
-                        	this.manager.unloadBundle(child);
-                        }
-            		}
-            		catch(Exception e) {
-            			e.printStackTrace();
-            		}
-            	}
 
-                // if directory is created, and watching recursively, then
+				// C.R. Changes
+				if (kind == ENTRY_CREATE) {
+					// this.manager.loadBundle(child);
+					loadMap.put(DirectoryAction.LOAD, child);
+					return loadMap;
+				} else if (kind == ENTRY_DELETE) {
+					// this.manager.unloadBundle(child);
+					loadMap.put(DirectoryAction.UNLOAD, child);
+					return loadMap;
+				}
+
+				// if directory is created, and watching recursively, then
                 // register it and its sub-directories
                 if (recursive && (kind == ENTRY_CREATE)) {
                     try {
@@ -193,6 +194,8 @@ public class WatchDir {
                 }
             }
         }
+        loadMap.put(DirectoryAction.END, null);
+        return loadMap;
     }
     
     static void usage() {
@@ -215,6 +218,7 @@ public class WatchDir {
 
         // register directory and process its events
         Path dir = Paths.get(args[dirArg]);
-        new WatchDir(null, dir, recursive).processEvents(); // C.R. Change - Added null parameter
+        // The following line will not work.
+        new WatchDir(dir, recursive).processEvent(); // C.R. Change - Added null parameter
     }
 }

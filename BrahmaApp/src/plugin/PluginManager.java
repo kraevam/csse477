@@ -7,9 +7,12 @@ import java.net.URLClassLoader;
 import java.nio.file.FileSystems;
 import java.nio.file.Path;
 import java.util.HashMap;
+import java.util.List;
+import java.util.Map;
 import java.util.jar.Attributes;
 import java.util.jar.JarFile;
 import java.util.jar.Manifest;
+
 
 public class PluginManager implements Runnable {
 	private PluginCore core;
@@ -19,7 +22,7 @@ public class PluginManager implements Runnable {
 	public PluginManager(PluginCore core) throws IOException {
 		this.core = core;
 		this.pathToPlugin = new HashMap<Path, Plugin>();
-		watchDir = new WatchDir(this, FileSystems.getDefault().getPath("plugins"), false);
+		watchDir = new WatchDir(FileSystems.getDefault().getPath("plugins"), false);
 	}
 
 	@Override
@@ -40,7 +43,31 @@ public class PluginManager implements Runnable {
 		}
 		
 		// Listen for newly added plugins
-		watchDir.processEvents();
+		processBundles();
+	}
+	
+	void processBundles() {
+		Map<DirectoryAction, Path> loadMap = watchDir.processEvent();
+		Path child;
+		
+		while (!loadMap.containsKey(DirectoryAction.END)) {
+			if (loadMap.isEmpty())
+				continue;
+
+			try {
+				child = loadMap.get(DirectoryAction.LOAD);
+				if (child != null) {
+					loadBundle(child);
+				}
+
+				child = loadMap.get(DirectoryAction.UNLOAD);
+				if (child != null) {
+					unloadBundle(child);
+				}
+			} catch (Exception e) {
+				e.printStackTrace();
+			}
+		}
 	}
 
 	void loadBundle(Path bundlePath) throws Exception {
