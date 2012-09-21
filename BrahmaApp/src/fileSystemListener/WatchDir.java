@@ -34,7 +34,7 @@
  * The code has been modified from its original version for this plugin application.
  * -Chandan R. Rupakheti (rupakhet@rose-hulman.edu)
  */
-package plugin;
+package fileSystemListener;
 
 import java.nio.file.*;
 
@@ -43,6 +43,7 @@ import static java.nio.file.LinkOption.*;
 import java.nio.file.attribute.*;
 import java.io.*;
 import java.util.*;
+
 
 
 /**
@@ -99,7 +100,7 @@ public class WatchDir {
     /**
      * Creates a WatchService and registers the given directory
      */
-    WatchDir(Path dir, boolean recursive) throws IOException {
+    public WatchDir(Path dir, boolean recursive) throws IOException {
         this.watcher = FileSystems.getDefault().newWatchService();
         this.keys = new HashMap<WatchKey,Path>();
         this.recursive = recursive;
@@ -119,7 +120,7 @@ public class WatchDir {
     /**
      * Process one event for keys queued to the watcher
      */
-    Map<DirectoryAction, Path> processEvent() {
+    public Map<DirectoryAction, Path> processEvent() {
 //    	List<Path> toLoad = new ArrayList<Path>();
 //    	List<Path> toUnload = new ArrayList<Path>();
 //    	Map<DirectoryAction, List<Path>> loadMap = new HashMap<DirectoryAction, List<Path>>();
@@ -134,6 +135,7 @@ public class WatchDir {
             try {
                 key = watcher.take();
             } catch (InterruptedException x) {
+            	// Not sure if this is the right thing to do here.
                 return loadMap;
             }
 

@@ -1,4 +1,4 @@
-package plugin;
+package fileSystemListener;
 
 public enum DirectoryAction {
 	LOAD,

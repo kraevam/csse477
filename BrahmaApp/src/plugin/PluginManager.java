@@ -7,11 +7,13 @@ import java.net.URLClassLoader;
 import java.nio.file.FileSystems;
 import java.nio.file.Path;
 import java.util.HashMap;
-import java.util.List;
 import java.util.Map;
 import java.util.jar.Attributes;
 import java.util.jar.JarFile;
 import java.util.jar.Manifest;
+
+import fileSystemListener.DirectoryAction;
+import fileSystemListener.WatchDir;
 
 
 public class PluginManager implements Runnable {
