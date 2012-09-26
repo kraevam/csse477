@@ -7,7 +7,7 @@ import plugin.IPlugin;
  * @author kraevam
  *
  */
-public interface IPluginLoadListener extends IBrahmaExtension {
+public interface IPluginListenerExtension extends IBrahmaExtension {
 
 	public void pluginLoaded(IPlugin plugin);
 	public void pluginUnloaded(IPlugin plugin);
