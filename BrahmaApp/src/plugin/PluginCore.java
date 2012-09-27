@@ -20,14 +20,14 @@ public class PluginCore {
 	private JPanel centerEnvelope;
 	
 	// For holding registered plugin
-	private HashMap<String, Plugin> idToPlugin;
-	private Plugin currentPlugin;
+	private HashMap<String, IPlugin> idToPlugin;
+	private IPlugin currentPlugin;
 	
 	// Plugin manager
 	PluginManager pluginManager;
 	
 	public PluginCore() {
-		idToPlugin = new HashMap<String, Plugin>();
+		idToPlugin = new HashMap<String, IPlugin>();
 		
 		// Lets create the elements that we will need
 		frame = new JFrame("Pluggable Board Application");
@@ -64,7 +64,7 @@ public class PluginCore {
 				// List has finalized selection, let's process further
 				int index = sideList.getSelectedIndex();
 				String id = listModel.elementAt(index);
-				Plugin plugin = idToPlugin.get(id);
+				IPlugin plugin = idToPlugin.get(id);
 				
 				if(plugin == null || plugin.equals(currentPlugin))
 					return;
@@ -84,7 +84,8 @@ public class PluginCore {
 				centerEnvelope.add(centerPanel, BorderLayout.CENTER); 
 				
 				// Ask plugin to layout the working area
-				currentPlugin.layout(centerPanel);
+				// TODO: This whole class should be remodeled to be a UI Extension...
+				// currentPlugin.layout(centerPanel);
 				contentPane.revalidate();
 				contentPane.repaint();
 				
@@ -97,7 +98,7 @@ public class PluginCore {
 		
 		// Start the plugin manager now that the core is ready
 		try {
-			this.pluginManager = new PluginManager(this);
+			this.pluginManager = new PluginManager();
 		}
 		catch(Exception e) {
 			e.printStackTrace();
@@ -125,14 +126,14 @@ public class PluginCore {
 		});
 	}
 	
-	public void addPlugin(Plugin plugin) {
+	public void addPlugin(IPlugin plugin) {
 		this.idToPlugin.put(plugin.getId(), plugin);
 		this.listModel.addElement(plugin.getId());
 		this.bottomLabel.setText("The " + plugin.getId() + " plugin has been recently added!");
 	}
 	
 	public void removePlugin(String id) {
-		Plugin plugin = this.idToPlugin.remove(id);
+		IPlugin plugin = this.idToPlugin.remove(id);
 		this.listModel.removeElement(id);
 		
 		// Stop the plugin if it is still running

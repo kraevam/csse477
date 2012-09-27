@@ -12,18 +12,19 @@ import java.util.jar.Attributes;
 import java.util.jar.JarFile;
 import java.util.jar.Manifest;
 
+import extension.ExtensionsManager;
+import extension.IPluginListenerExtension;
+import extension.IStatusExtension;
 import fileSystemListener.DirectoryAction;
 import fileSystemListener.WatchDir;
 
 
 public class PluginManager implements Runnable {
-	private PluginCore core;
 	private WatchDir watchDir;
-	private HashMap<Path, Plugin> pathToPlugin;
-
-	public PluginManager(PluginCore core) throws IOException {
-		this.core = core;
-		this.pathToPlugin = new HashMap<Path, Plugin>();
+	private HashMap<Path, IPlugin> pathToPlugin;
+	
+	public PluginManager() throws IOException {
+		this.pathToPlugin = new HashMap<Path, IPlugin>();
 		watchDir = new WatchDir(FileSystems.getDefault().getPath("plugins"), false);
 	}
 
@@ -48,7 +49,7 @@ public class PluginManager implements Runnable {
 		processBundles();
 	}
 	
-	void processBundles() {
+	private void processBundles() {
 		Map<DirectoryAction, Path> loadMap = watchDir.processEvent();
 		Path child;
 		
@@ -72,7 +73,7 @@ public class PluginManager implements Runnable {
 		}
 	}
 
-	void loadBundle(Path bundlePath) throws Exception {
+	private void loadBundle(Path bundlePath) throws Exception {
 		// Get hold of the jar file
 		File jarBundle = bundlePath.toFile();
 		JarFile jarFile = new JarFile(jarBundle);
@@ -87,19 +88,43 @@ public class PluginManager implements Runnable {
         ClassLoader classLoader = new URLClassLoader(urls);
         Class<?> pluginClass = classLoader.loadClass(className);
         
-        // Create a new instance of the plugin class and add to the core
-        Plugin plugin = (Plugin)pluginClass.newInstance();
-        this.core.addPlugin(plugin);
-        this.pathToPlugin.put(bundlePath, plugin);
-
+        // Create a new instance of the plugin
+        if (pluginClass.isAssignableFrom(IPlugin.class)) {
+        	IPlugin plugin = (IPlugin)pluginClass.newInstance();
+        	this.pathToPlugin.put(bundlePath, plugin);	
+        	notifyLoaded(plugin);
+    		notifyStatus("Plugin loaded: " + bundlePath.toString());
+        }
+        
         // Release the jar resources
         jarFile.close();
+        
+        // check if this is an extension to our app and if so, register it
+        ExtensionsManager.INSTANCE.registerExtension(jarFile);
 	}
 	
-	void unloadBundle(Path bundlePath) {
-		Plugin plugin = this.pathToPlugin.remove(bundlePath);
-		if(plugin != null) {
-			this.core.removePlugin(plugin.getId());
+	private void unloadBundle(Path bundlePath) {
+		IPlugin plugin = this.pathToPlugin.remove(bundlePath);
+		notifyUnloaded(plugin);
+		notifyStatus("Plugin unloaded: " + bundlePath.toString());
+	}
+	
+	private void notifyLoaded(IPlugin plugin) {
+		for (IPluginListenerExtension extension : ExtensionsManager.INSTANCE.getPluginListenerExtensions()) {
+			extension.pluginLoaded(plugin);
+		}
+	}
+	
+	private void notifyUnloaded(IPlugin plugin) {
+		for (IPluginListenerExtension extension : ExtensionsManager.INSTANCE.getPluginListenerExtensions()) {
+			extension.pluginUnloaded(plugin);
+		}
+	}
+	
+	// TODO: call this whenever a plugin is loaded/unloaded and whenever there is a dependency problem of some sort
+	private void notifyStatus(String message) {
+		for (IStatusExtension extension : ExtensionsManager.INSTANCE.getStatusExtensions()) {
+			extension.addToStatus(message);
 		}
 	}
 }
