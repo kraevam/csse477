@@ -54,9 +54,6 @@ public class PluginManager implements Runnable {
 		Path child;
 		
 		while (!loadMap.containsKey(DirectoryAction.END)) {
-			if (loadMap.isEmpty())
-				continue;
-
 			try {
 				child = loadMap.get(DirectoryAction.LOAD);
 				if (child != null) {
@@ -70,6 +67,8 @@ public class PluginManager implements Runnable {
 			} catch (Exception e) {
 				e.printStackTrace();
 			}
+			
+			loadMap = watchDir.processEvent();
 		}
 	}
 
