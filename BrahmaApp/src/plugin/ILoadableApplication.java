@@ -1,6 +1,6 @@
 package plugin;
 
-public interface IPlugin {
+public interface ILoadableApplication {
 
 	public String getId();
 	public void start();

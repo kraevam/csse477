@@ -20,14 +20,14 @@ public class PluginCore {
 	private JPanel centerEnvelope;
 	
 	// For holding registered plugin
-	private HashMap<String, IPlugin> idToPlugin;
-	private IPlugin currentPlugin;
+	private HashMap<String, ILoadableApplication> idToPlugin;
+	private ILoadableApplication currentPlugin;
 	
 	// Plugin manager
 	PluginManager pluginManager;
 	
 	public PluginCore() {
-		idToPlugin = new HashMap<String, IPlugin>();
+		idToPlugin = new HashMap<String, ILoadableApplication>();
 		
 		// Lets create the elements that we will need
 		frame = new JFrame("Pluggable Board Application");
@@ -64,7 +64,7 @@ public class PluginCore {
 				// List has finalized selection, let's process further
 				int index = sideList.getSelectedIndex();
 				String id = listModel.elementAt(index);
-				IPlugin plugin = idToPlugin.get(id);
+				ILoadableApplication plugin = idToPlugin.get(id);
 				
 				if(plugin == null || plugin.equals(currentPlugin))
 					return;
@@ -126,14 +126,14 @@ public class PluginCore {
 		});
 	}
 	
-	public void addPlugin(IPlugin plugin) {
+	public void addPlugin(ILoadableApplication plugin) {
 		this.idToPlugin.put(plugin.getId(), plugin);
 		this.listModel.addElement(plugin.getId());
 		this.bottomLabel.setText("The " + plugin.getId() + " plugin has been recently added!");
 	}
 	
 	public void removePlugin(String id) {
-		IPlugin plugin = this.idToPlugin.remove(id);
+		ILoadableApplication plugin = this.idToPlugin.remove(id);
 		this.listModel.removeElement(id);
 		
 		// Stop the plugin if it is still running
