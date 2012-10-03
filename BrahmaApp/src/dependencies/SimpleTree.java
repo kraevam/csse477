@@ -3,6 +3,7 @@ package dependencies;
 import java.util.ArrayList;
 import java.util.Iterator;
 import java.util.List;
+import java.util.NoSuchElementException;
 
 import dependencies.exception.CycleException;
 
@@ -81,20 +82,22 @@ public class SimpleTree<T> {
 		
 		public ChildrenFirstIterator(SimpleTree<T> root) {
 			this.root = root;
+			setToFirst();
 		}
 
 		@Override
 		public boolean hasNext() {
-			return (!this.node.equals(this.root));
+			return (this.node != null);
 		}
 
 		@Override
 		public T next() {
-			if (this.node == null)
-				setToFirst();
-			else
-				next(this.node);
-			return this.node.data;
+			if (!hasNext())
+				throw new NoSuchElementException();
+			
+			T result = this.node.data;
+			next(this.node);
+			return result;
 		}
 
 		@Override
@@ -109,9 +112,17 @@ public class SimpleTree<T> {
 			
 			if (this.pos < 0) {
 				this.node = root;
+				return;
 			}
 			
 			SimpleTree<T> parent = previous.parent;
+			if (parent == null) {
+				// previous was the root
+				// no next element
+				this.node = null;
+				return;
+			}
+			
 			this.pos++;
 			
 			if (parent.children.size() <= this.pos) {

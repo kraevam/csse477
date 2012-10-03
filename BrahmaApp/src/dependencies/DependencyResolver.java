@@ -69,6 +69,10 @@ public class DependencyResolver {
 			e.printStackTrace();
 		}
 		String dependencies = manifest.getMainAttributes().getValue(Attributes.Name.CLASS_PATH);
+		if (dependencies == null) {
+			// no dependencies - return the empty list
+			return dependenciesList;
+		}
 		StringTokenizer st = new StringTokenizer(dependencies, " ");
 		while(st.hasMoreTokens()) {
 			String dependency = st.nextToken();

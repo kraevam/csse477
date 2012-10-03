@@ -50,16 +50,16 @@ public enum ExtensionsManager {
 		try {
 			Class<?> extensionClass = classLoader.loadClass(className);
 
-			if (extensionClass.isAssignableFrom(IBrahmaExtension.class)) {
+			if (IBrahmaExtension.class.isAssignableFrom(extensionClass)) {
 				IBrahmaExtension extension = (IBrahmaExtension)extensionClass.newInstance();
 				allExtensions.add(extension);
 				
 				// add this extension instance to any appropriate category
-				if (extensionClass.isAssignableFrom(IPluginListenerExtension.class)) {
+				if (IPluginListenerExtension.class.isAssignableFrom(extensionClass)) {
 					IPluginListenerExtension pluginListenerExtension = (IPluginListenerExtension)extension;
 					pluginListenerExtensions.add(pluginListenerExtension);
 				}
-				if (extensionClass.isAssignableFrom(IStatusExtension.class)) {
+				if (IStatusExtension.class.isAssignableFrom(extensionClass)) {
 					IStatusExtension statusExtension = (IStatusExtension)extensionClass.newInstance();
 					statusExtensions.add(statusExtension);
 				}
@@ -73,6 +73,12 @@ public enum ExtensionsManager {
 		return result;
 	}
 
+	public void unregisterExtension(JarFile jarFile) {
+		// TOOD: Unimplemented
+		// Maybe implement a map from jar files to all added extensions
+		// and in this method remove those extensions from the map and from the corresponding sets that keep them...
+	}
+	
 	public Set<IBrahmaExtension> getAllExtensions() {
 		return Collections.unmodifiableSet(allExtensions);
 	}
