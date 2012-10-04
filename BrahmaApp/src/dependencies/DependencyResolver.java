@@ -1,6 +1,8 @@
 package dependencies;
 
+import java.io.File;
 import java.io.IOException;
+import java.nio.file.Path;
 import java.util.ArrayList;
 import java.util.HashSet;
 import java.util.Iterator;
@@ -38,17 +40,17 @@ public class DependencyResolver {
 	}
 	
 	public SimpleTree<JarFile> getDependenciesTree() throws CycleDependencyException {
-		SimpleTree<JarFile> dependencyRoot = new SimpleTree<JarFile>(jarFile);
+		JarFileTree dependencyRoot = new JarFileTree(jarFile);
 		buildDependenciesTreeForRootJar(dependencyRoot);
 		return dependencyRoot;
 	}
 
-	private void buildDependenciesTreeForRootJar(SimpleTree<JarFile> dependencyRoot) throws CycleDependencyException {
+	private void buildDependenciesTreeForRootJar(JarFileTree dependencyRoot) throws CycleDependencyException {
 		JarFile rootJar = dependencyRoot.getData();
 		List<JarFile> jarDependencies = getDependenciesForJar(rootJar);
 
 		for (JarFile dependencyJar : jarDependencies) {
-			SimpleTree<JarFile> dependency = new SimpleTree<JarFile>(dependencyJar, dependencyRoot);
+			JarFileTree dependency = new JarFileTree(dependencyJar, dependencyRoot);
 			try {
 				dependencyRoot.addChild(dependency);
 			} catch (CycleException e) {
@@ -73,12 +75,15 @@ public class DependencyResolver {
 			// no dependencies - return the empty list
 			return dependenciesList;
 		}
+		String currentFilepath = jarFile.getName();
+		Path currentPath = new File(currentFilepath).toPath();
 		StringTokenizer st = new StringTokenizer(dependencies, " ");
 		while(st.hasMoreTokens()) {
 			String dependency = st.nextToken();
+			Path resolvedPath = currentPath.resolveSibling(dependency);
 			JarFile dependencyJar = null;
 			try {
-				dependencyJar = new JarFile(dependency);
+				dependencyJar = new JarFile(resolvedPath.toFile());
 			} catch (IOException e) {
 				// TODO Auto-generated catch block
 				e.printStackTrace();

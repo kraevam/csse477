@@ -98,8 +98,8 @@ public class LoadableApplicationManager implements Runnable {
 		try {
 			dependencies = dependencyResolver.getOrderedDependencies();
 		} catch (CycleDependencyException e) {
-			// TODO Auto-generated catch block
-			e.printStackTrace();
+			notifyStatus("Cyclic dependency detected for jar! " + bundlePath.toString());
+			return;
 		}
 
 		for (JarFile jar : dependencies) {

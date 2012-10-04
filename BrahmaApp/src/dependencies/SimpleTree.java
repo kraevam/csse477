@@ -42,7 +42,7 @@ public class SimpleTree<T> {
 		if(checkHasAncestor(child))
 			throw new CycleException(child.getData());
 		else {
-			child.setParent(parent);
+			child.setParent(this);
 			children.add(child);
 		}
 	}
@@ -62,7 +62,7 @@ public class SimpleTree<T> {
 	private boolean checkHasAncestor(SimpleTree<T> parent) {
 		SimpleTree<T> currentNode = this;
 		do {
-			if (parent.data.equals(currentNode.data))
+			if (checkEqual(parent.data, currentNode.data))
 				return true;
 			
 			currentNode = currentNode.parent;
@@ -73,6 +73,10 @@ public class SimpleTree<T> {
 	
 	public Iterator<T> getChildrenFirstIterator() {
 		return new ChildrenFirstIterator(this);
+	}
+	
+	protected boolean checkEqual(T value1, T value2) {
+		return value1.equals(value2);
 	}
 	
 	private class ChildrenFirstIterator implements Iterator<T> {
@@ -107,12 +111,7 @@ public class SimpleTree<T> {
 		
 		private void next(SimpleTree<T> previous) {
 			if (!hasNext()) {
-				setToFirst();
-			}
-			
-			if (this.pos < 0) {
-				this.node = root;
-				return;
+				throw new NoSuchElementException();
 			}
 			
 			SimpleTree<T> parent = previous.parent;
@@ -123,13 +122,20 @@ public class SimpleTree<T> {
 				return;
 			}
 			
+			if (this.pos < 0) {
+				this.node = root;
+				return;
+			}
+			
 			this.pos++;
 			
 			if (parent.children.size() <= this.pos) {
 				this.pos = getIndex(parent);
-				next(parent);
+				this.node = parent;
+//				next(parent);
+			} else {
+				next(parent.children.get(this.pos));
 			}
-			this.node = (SimpleTree<T>) parent.children.get(this.pos);
 		}
 
 		private void setToFirst() {
@@ -141,7 +147,7 @@ public class SimpleTree<T> {
 		
 		private int getIndex(SimpleTree<T> node) {
 			if(node.parent == null) return -1;
-			return node.parent.children.indexOf(this);
+			return node.parent.children.indexOf(node);
 		}
 	}
 }
