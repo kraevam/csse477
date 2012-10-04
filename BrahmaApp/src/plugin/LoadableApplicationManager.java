@@ -31,7 +31,7 @@ public class LoadableApplicationManager implements Runnable {
 	
 	public LoadableApplicationManager() throws IOException {
 		this.pathToPlugin = new HashMap<Path, ILoadableApplication>();
-		this.pathToPlugin = new HashMap<>();
+		this.pathToJarClassloader = new HashMap<>();
 		
 		final String loadableAppsPath = BrahmaGlobalProperties.INSTANCE.getProperty(BrahmaGlobalProperties.LOADABLE_APPS_DIR_PROPERTY);
 		loadableApplicationsWatchDir = new WatchDir(FileSystems.getDefault().getPath(loadableAppsPath), false);
