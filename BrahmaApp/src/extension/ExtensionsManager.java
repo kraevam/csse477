@@ -1,12 +1,23 @@
 package extension;
 
+import java.io.File;
 import java.io.IOException;
+import java.net.URL;
+import java.net.URLClassLoader;
+import java.nio.file.Path;
+import java.util.ArrayList;
 import java.util.Collections;
 import java.util.HashSet;
+import java.util.List;
 import java.util.Set;
 import java.util.jar.Attributes;
 import java.util.jar.JarFile;
 import java.util.jar.Manifest;
+
+import dependencies.DependencyResolver;
+import dependencies.exception.CycleDependencyException;
+
+import plugin.BrahmaGlobalProperties;
 
 public enum ExtensionsManager {
 
@@ -22,12 +33,52 @@ public enum ExtensionsManager {
 		statusExtensions = new HashSet<>();
 	}
 
+	public void initializeExtensions() {
+		final String extensionsPath = 
+				BrahmaGlobalProperties.INSTANCE.getProperty(BrahmaGlobalProperties.EXTENSIONS_DIR_PROPERTY);
+		File extensionsDirFile = new File(extensionsPath);
+		if (!extensionsDirFile.exists() || !extensionsDirFile.isDirectory()) {
+			System.out.println("Please check configurations. File does not exist or is not a directory:\n" + BrahmaGlobalProperties.EXTENSIONS_DIR_PROPERTY);
+			// run BrahmaApp without extensions
+			return;
+		}
+		
+		for(File extensionFile : extensionsDirFile.listFiles()) {
+			JarFile extensionJar = null;
+			try {
+				extensionJar = new JarFile(extensionFile);
+			} catch (IOException e) {
+				// not a jar, move on
+				continue;
+			}
+			
+			DependencyResolver dependencyResolver = new DependencyResolver(extensionJar);
+			List<JarFile> dependencies;
+			try {
+				dependencies = dependencyResolver.getOrderedDependencies();
+			} catch (CycleDependencyException e1) {
+				// Obviously, this jar is problematic; Don't load it and move on
+				e1.printStackTrace();
+				continue;
+			}
+			
+			for (JarFile dependency : dependencies) {
+				registerExtension(dependency, (new File(dependency.getName()).toPath()));
+			}
+			
+			if(extensionJar != null) {				
+				try {
+					extensionJar.close();
+				} catch (IOException e) { }
+			}
+		}
+	}
 	/**
 	 * Registers an extension into the Brahma application so that it can receive any information it would need
 	 * @param jarFile The jar file that is supposed to contain an extension
 	 * @return True if the jar file is a valid extension to the Brahma Application
 	 */
-	public boolean registerExtension(JarFile jarFile) {
+	public boolean registerExtension(JarFile jarFile, Path filePath) {
 		Manifest manifest = null;
 		try {
 			manifest = jarFile.getManifest();
@@ -44,15 +95,17 @@ public enum ExtensionsManager {
 			return false; // cannot load
 		}
 
-		boolean result = true;
-		
-		ClassLoader classLoader = ClassLoader.getSystemClassLoader();
+		boolean result = false;
+				
 		try {
+			URL[] urls = new URL[]{filePath.toUri().toURL()};
+			URLClassLoader classLoader = new URLClassLoader(urls);
 			Class<?> extensionClass = classLoader.loadClass(className);
 
 			if (IBrahmaExtension.class.isAssignableFrom(extensionClass)) {
 				IBrahmaExtension extension = (IBrahmaExtension)extensionClass.newInstance();
 				allExtensions.add(extension);
+				result = true;
 				
 				// add this extension instance to any appropriate category
 				if (IPluginListenerExtension.class.isAssignableFrom(extensionClass)) {
@@ -64,8 +117,7 @@ public enum ExtensionsManager {
 					statusExtensions.add(statusExtension);
 				}
 			}
-		} catch (ClassNotFoundException | InstantiationException | IllegalAccessException e) {
-			// TODO Make a pretty log for better testability
+		} catch (Exception e) {
 			e.printStackTrace();
 			result = false;
 		}

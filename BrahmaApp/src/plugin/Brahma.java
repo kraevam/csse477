@@ -2,13 +2,16 @@ package plugin;
 
 import java.io.IOException;
 
+import extension.ExtensionsManager;
+
 public class Brahma {
 	public static void main(String args[]) {
 //		PluginCore core = new PluginCore();
 //		core.start();
-		PluginManager pm;
+		ExtensionsManager.INSTANCE.initializeExtensions();
+		LoadableApplicationManager pm;
 		try {
-			pm = new PluginManager();
+			pm = new LoadableApplicationManager();
 		} catch (IOException e) {
 			// TODO Auto-generated catch block
 			e.printStackTrace();

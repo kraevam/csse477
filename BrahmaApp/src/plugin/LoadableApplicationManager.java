@@ -23,13 +23,18 @@ import fileSystemListener.DirectoryAction;
 import fileSystemListener.WatchDir;
 
 
-public class PluginManager implements Runnable {
-	private WatchDir watchDir;
+public class LoadableApplicationManager implements Runnable {
+	private WatchDir loadableApplicationsWatchDir;
+	
 	private HashMap<Path, ILoadableApplication> pathToPlugin;
-
-	public PluginManager() throws IOException {
+	private HashMap<Path, URLClassLoader> pathToJarClassloader;
+	
+	public LoadableApplicationManager() throws IOException {
 		this.pathToPlugin = new HashMap<Path, ILoadableApplication>();
-		watchDir = new WatchDir(FileSystems.getDefault().getPath("plugins"), false);
+		this.pathToPlugin = new HashMap<>();
+		
+		final String loadableAppsPath = BrahmaGlobalProperties.INSTANCE.getProperty(BrahmaGlobalProperties.LOADABLE_APPS_DIR_PROPERTY);
+		loadableApplicationsWatchDir = new WatchDir(FileSystems.getDefault().getPath(loadableAppsPath), false);
 	}
 
 	@Override
@@ -50,10 +55,10 @@ public class PluginManager implements Runnable {
 		}
 
 		// Listen for newly added plugins
-		processBundles();
+		processBundles(this.loadableApplicationsWatchDir);
 	}
 	
-	private void processBundles() {
+	private void processBundles(WatchDir watchDir) {
 		Map<DirectoryAction, Path> loadMap = watchDir.processEvent();
 		Path child;
 		
@@ -84,7 +89,7 @@ public class PluginManager implements Runnable {
 		try {
 			jarFile = new JarFile(jarBundle);
 		} catch (IOException e) {
-			notifyStatus("Error accessing jar file: " + bundlePath.toString());
+			notifyStatus("File could not be loaded: " + bundlePath.toString());
 			return;
 		}
 
@@ -98,19 +103,13 @@ public class PluginManager implements Runnable {
 		}
 
 		for (JarFile jar : dependencies) {
-			// check if this is an extension to our app and if so, register it
-			boolean extensionRegistered = ExtensionsManager.INSTANCE.registerExtension(jar);
-			if(extensionRegistered) {
-				notifyStatus("Extension registered: " + jar.getName());
-			}
+
 			boolean pluginRegistered = registerLoadableApplication(bundlePath, jar);
 			if(pluginRegistered) {
 				notifyStatus("Plugin loaded: " + bundlePath.toString());
-			}
-
-			if(!extensionRegistered && !pluginRegistered) {
+			} else {
 				// there was something wrong with this jar...
-				notifyStatus("The entry point of the jar file does not conform to any Brahma Interfaces and has not been loaded.: " + jar.getName());
+				notifyStatus("The entry point of the jar file does not conform to the ILoadableApplication Interface and has not been loaded.: " + jar.getName());
 			}
 		}
 
@@ -127,6 +126,12 @@ public class PluginManager implements Runnable {
 
 			// Get hold of the Plugin-Class attribute and load the class
 			String className = mainAttribs.getValue("Plugin-Class");
+			
+			if (className == null) {
+				// this is not a Brahma plugin
+				return false;
+			}
+			
 			URL[] urls = new URL[]{bundlePath.toUri().toURL()};
 			URLClassLoader classLoader = new URLClassLoader(urls);
 			Class<?> pluginClass = classLoader.loadClass(className);
@@ -135,12 +140,13 @@ public class PluginManager implements Runnable {
 			if (ILoadableApplication.class.isAssignableFrom(pluginClass)) {
 				ILoadableApplication plugin = (ILoadableApplication)pluginClass.newInstance();
 				success = true;
-				this.pathToPlugin.put(bundlePath, plugin);	
+				this.pathToPlugin.put(bundlePath, plugin);
+				this.pathToJarClassloader.put(bundlePath, classLoader);
 				notifyLoaded(plugin);
 			}
 
-			// Release the jar resources
-			classLoader.close();
+			// If we close the classloader, the plugin is not able to load its other classes when it needs them :(
+			// classLoader.close();
 		} catch (Exception e) {
 			e.printStackTrace();
 		}
@@ -150,30 +156,29 @@ public class PluginManager implements Runnable {
 
 	private void unloadBundle(Path bundlePath) {
 		ILoadableApplication plugin = this.pathToPlugin.remove(bundlePath);
-		JarFile jar = null;
-		try {
-			jar = new JarFile(bundlePath.toFile());
-		} catch (IOException e) {
-			// TODO Auto-generated catch block
-			e.printStackTrace();
-		}
-		ExtensionsManager.INSTANCE.unregisterExtension(jar);
 		notifyUnloaded(plugin);
 		notifyStatus("Plugin unloaded: " + bundlePath.toString());
+		URLClassLoader bundleClassLoader = this.pathToJarClassloader.remove(bundlePath);
+		try {
+		// release the resources
+			bundleClassLoader.close();
+		} catch (IOException e) {
+			e.printStackTrace();
+		}
 	}
 
 	private void notifyLoaded(ILoadableApplication plugin) {
 		for (IPluginListenerExtension extension : ExtensionsManager.INSTANCE.getPluginListenerExtensions()) {
 			extension.pluginLoaded(plugin);
 		}
-		System.out.println("Plugin loaded: " + plugin.getId());
+		// System.out.println("Plugin loaded: " + plugin.getId());
 	}
 
 	private void notifyUnloaded(ILoadableApplication plugin) {
 		for (IPluginListenerExtension extension : ExtensionsManager.INSTANCE.getPluginListenerExtensions()) {
 			extension.pluginUnloaded(plugin);
 		}
-		System.out.println("Plugin loaded: " + plugin.getId());
+		// System.out.println("Plugin loaded: " + plugin.getId());
 	}
 
 	// TODO: call this whenever a plugin is loaded/unloaded and whenever there is a dependency problem of some sort
@@ -181,6 +186,6 @@ public class PluginManager implements Runnable {
 		for (IStatusExtension extension : ExtensionsManager.INSTANCE.getStatusExtensions()) {
 			extension.updateStatus(message);
 		}
-		System.out.println("New status: " + message);
+		// System.out.println("New status: " + message);
 	}
 }
