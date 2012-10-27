@@ -118,6 +118,8 @@ public class Server implements Runnable {
 		try {
 			this.welcomeSocket = new ServerSocket(port);
 			
+			ConnectionManager manager = new ConnectionManager(this);
+			
 			// Now keep welcoming new connections until stop flag is set to true
 			while(true) {
 				// Listen for incoming socket connection
@@ -129,8 +131,7 @@ public class Server implements Runnable {
 					break;
 				
 				// Create a handler for this incoming connection and start the handler in a new thread
-				ConnectionHandler handler = new ConnectionHandler(this, connectionSocket);
-				new Thread(handler).start();
+				manager.startHandler(connectionSocket);
 			}
 			this.welcomeSocket.close();
 		}
