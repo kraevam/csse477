@@ -74,7 +74,7 @@ public class ResponseManager {
 					// Look for default index.html file in a directory
 					file = new File(file, Protocol.DEFAULT_FILE);
 				}
-				System.out.println(file.getAbsolutePath());
+				// System.out.println(file.getAbsolutePath());
 				if (!file.exists()) {
 					response = HttpResponseFactory.create404NotFound(Protocol.OPEN);
 				} else {

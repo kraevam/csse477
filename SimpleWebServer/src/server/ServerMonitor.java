@@ -45,13 +45,13 @@ public enum ServerMonitor {
 	}
 	
 	public void removeRequest(String client) {
+		if (client == null)
+			return;
 		int currentClientCount = connectionsPerClient.get(client);
 		if (currentClientCount > 0) {
 			currentClientCount--;
-			if (currentClientCount != 0) {
+			if (currentClientCount >= 0) {
 				connectionsPerClient.put(client, currentClientCount);
-			} else {
-				connectionsPerClient.remove(client);
 			}
 		}
 		if (attackers.contains(client) && currentClientCount < MAX_DESIRABLE_CONNECTIONS_PER_CLIENT) {
