@@ -25,6 +25,7 @@ package protocol;
 import java.io.BufferedReader;
 import java.io.InputStream;
 import java.io.InputStreamReader;
+import java.net.SocketException;
 import java.util.Collections;
 import java.util.HashMap;
 import java.util.Map;
@@ -96,12 +97,19 @@ public class HttpRequest {
 		
 		InputStreamReader inStreamReader = new InputStreamReader(inputStream);
 		BufferedReader reader = new BufferedReader(inStreamReader);
-		
+
 		//First Request Line: GET /somedir/page.html HTTP/1.1
-		String line = reader.readLine(); // A line ends with either a \r, or a \n, or both
-		
+		String line = null;
+		try {
+			line = reader.readLine(); // A line ends with either a \r, or a \n, or both
+		} catch (SocketException ex) {
+			// socket got closed on us
+			throw ex;
+		}
 		if(line == null) {
-			throw new ProtocolException(Protocol.BAD_REQUEST_CODE, Protocol.BAD_REQUEST_TEXT);
+			// end of stream - time to close the connection
+			throw new SocketException(); // silly way to handle it
+			// throw new ProtocolException(Protocol.BAD_REQUEST_CODE, Protocol.BAD_REQUEST_TEXT);
 		}
 		
 		// We will break this line using space as delimeter into three parts

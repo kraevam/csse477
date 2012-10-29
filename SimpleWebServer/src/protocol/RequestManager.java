@@ -28,10 +28,12 @@
  
 package protocol;
 
+import java.io.IOException;
 import java.io.InputStream;
 import java.net.SocketException;
 import java.util.LinkedList;
 import java.util.Queue;
+import java.util.concurrent.ConcurrentLinkedQueue;
 
 import server.ConnectionHandler;
 
@@ -43,16 +45,18 @@ public class RequestManager implements Runnable {
 	private ConnectionHandler handler;
 	private Queue<HttpRequest> queue;
 	private InputStream in;
-	private boolean servicable = true;
+	private boolean serviceable = true;
 	private boolean overloaded = false;
-
-	private static final int MAXSERVICABLE = 100;
-	private static final int MAXALLOWED = 150;
+	private boolean isClosed;
+	
+	private static final int MAX_SERVICEABLE = 100;
+	private static final int MAX_ALLOWED = 150;
 	
 	public RequestManager(ConnectionHandler handler, InputStream in) {
 		this.handler = handler;
-		this.queue = new LinkedList<HttpRequest>();
+		this.queue = new ConcurrentLinkedQueue<HttpRequest>();
 		this.in = in;
+		this.isClosed = false;
 	}
 
 	/* (non-Javadoc)
@@ -65,7 +69,7 @@ public class RequestManager implements Runnable {
 		long start, end;
 		int status;
 		
-		while (this.queue.size() < MAXALLOWED) {
+		while (this.queue.size() < MAX_ALLOWED) {
 			start = System.currentTimeMillis();
 			status = -1;
 			
@@ -73,7 +77,12 @@ public class RequestManager implements Runnable {
 				request = HttpRequest.read(in);
 				this.addRequest(request);
 				
-			} catch (ProtocolException pe) {
+			} catch (SocketException ex) {
+				// Socket got closed, notify the connection handler and abort this
+				this.isClosed = true;
+				return;
+			}
+			catch (ProtocolException pe) {
 				status = pe.getStatus();
 			} catch (Exception e) {
 				e.printStackTrace();
@@ -96,7 +105,7 @@ public class RequestManager implements Runnable {
 	}
 	
 	public boolean isServiceable() {
-		return this.servicable;
+		return this.serviceable;
 	}
 	
 	public boolean isOverloaded() {
@@ -104,20 +113,29 @@ public class RequestManager implements Runnable {
 	}
 	
 	public void addRequest(HttpRequest request) {
-		if (this.overloaded) {
+		if (!this.overloaded) {
 			this.queue.add(request);
-			this.overloaded = true;
 		}
 
-		if(this.queue.size() > MAXSERVICABLE) {
-			this.servicable = false;
+		if(this.queue.size() > MAX_SERVICEABLE) {
+			this.serviceable = false;
+		}
+		
+		if(this.queue.size() > MAX_ALLOWED) {
+			this.overloaded = true;
 		}
 		
 	}
 	
 	public HttpRequest getNextRequest() {
-		if (this.queue.isEmpty()) return null;
+		if (this.queue.isEmpty())
+			return null;
 		
 		return this.queue.remove();
 	}
+	
+	public boolean isClosed() {
+		return this.isClosed;
+	}
+
 }

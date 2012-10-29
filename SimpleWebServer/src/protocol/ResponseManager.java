@@ -33,18 +33,20 @@ import java.io.OutputStream;
 import java.net.SocketException;
 import java.util.Date;
 
+import server.Server;
 import util.DateUtil;
 
-//TODO: Add more functionality to this class. (file tracking)
 /**
  * 
  * @author Chandan R. Rupakheti (rupakhcr@clarkson.edu)
  */
 public class ResponseManager {
 	private OutputStream out;
+	private Server server;
 
-	public ResponseManager(OutputStream out) {
+	public ResponseManager(Server server, OutputStream out) {
 		this.out = out;
+		this.server = server;
 	}
 
 	/**
@@ -64,13 +66,15 @@ public class ResponseManager {
 				//
 				// Handling GET request here
 				// Get relative URI path from request
+				final String rootDir = server.getRootDirectory();
 				String uri = request.getUri();
-				File file = new File(uri);
+				File file = new File(rootDir, uri);
 				// Check if the file exists
 				if (file.isDirectory()) {
 					// Look for default index.html file in a directory
 					file = new File(file, Protocol.DEFAULT_FILE);
 				}
+				System.out.println(file.getAbsolutePath());
 				if (!file.exists()) {
 					response = HttpResponseFactory.create404NotFound(Protocol.OPEN);
 				} else {
@@ -100,9 +104,8 @@ public class ResponseManager {
 		}
 
 		try {
-			// Write response and we are all done so close the socket
 			response.write(out);
-			// System.out.println(response);
+//			System.out.println(response.toString());
 		} catch (Exception e) {
 			// We will ignore this exception
 			e.printStackTrace();

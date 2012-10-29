@@ -54,7 +54,7 @@ public class ConnectionHandler implements Runnable {
 		this.socket = socket;
 		if (setupStreams()) {
 			this.reqManager = new RequestManager(this, this.inStream);
-			this.resManager = new ResponseManager(this.outStream);
+			this.resManager = new ResponseManager(this.server, this.outStream);
 		}
 	}
 	
@@ -93,7 +93,7 @@ public class ConnectionHandler implements Runnable {
 		long start = System.currentTimeMillis();
 		long deadline = start + 15000;
 		
-		while (!reqManager.isOverloaded()) {
+		while (!reqManager.isOverloaded() && !reqManager.isClosed() && !socket.isClosed()) {
 			start = System.currentTimeMillis();
 			HttpRequest request = reqManager.getNextRequest();
 
@@ -126,8 +126,12 @@ public class ConnectionHandler implements Runnable {
 		}
 	}
 	
-	public void addBadResponse(int status) throws SocketException {
-		this.resManager.addBadResponse(status);
+	public void addBadResponse(int status) {
+		try {
+			this.resManager.addBadResponse(status);
+		} catch (SocketException e) {
+			// Socket got  closed, say bye-bye to this connection
+		}
 	}
 
 	/**
@@ -136,4 +140,5 @@ public class ConnectionHandler implements Runnable {
 	public void incrementServiceTime(long duration) {
 		this.server.incrementConnections(duration);
 	}
+	
 }

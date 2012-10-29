@@ -146,15 +146,21 @@ public class HttpResponse {
 		if(this.getStatus() == Protocol.OK_CODE && file != null) {
 			// Process text documents
 			ByteBuffer fileBuffer = FileTracker.INSTANCE.getFileContents(file.getPath());
-			ByteArrayInputStream inStream = new ByteArrayInputStream(fileBuffer.array());
+			
 			byte[] buffer = new byte[Protocol.CHUNK_LENGTH];
-			int bytesRead = 0;
 			// While there is some bytes to read from file, read each chunk and send to the socket out stream
-			while((bytesRead = inStream.read(buffer)) != -1) {
-				out.write(buffer, 0, bytesRead);
+			int offset = 0;
+			int bytesLeft = fileBuffer.limit();
+			while(bytesLeft >= Protocol.CHUNK_LENGTH) {
+				fileBuffer.get(buffer, offset, Protocol.CHUNK_LENGTH);
+				out.write(buffer, 0, Protocol.CHUNK_LENGTH);
+				bytesLeft -= Protocol.CHUNK_LENGTH;
 			}
-			// Close the file input stream, we are done reading
-			inStream.close();
+			if (bytesLeft > 0) {
+				fileBuffer.get(buffer, offset, bytesLeft);
+				out.write(buffer, 0, bytesLeft);
+			}
+			
 		}
 		
 		// Flush the data so that outStream sends everything through the socket 
