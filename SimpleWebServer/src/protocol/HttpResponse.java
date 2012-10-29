@@ -158,6 +158,9 @@ public class HttpResponse {
 				out.write(buffer, offset, bytesLeft);
 			}
 			
+		} else if (this.getStatus() == Protocol.NOT_FOUND_CODE) {
+			// send dummy page for File Not Found
+			out.write(Protocol.NOT_FOUND_HTML.getBytes());
 		}
 		
 		// Flush the data so that outStream sends everything through the socket 
