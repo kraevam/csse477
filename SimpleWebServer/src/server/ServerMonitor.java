@@ -80,4 +80,12 @@ public enum ServerMonitor {
 	public boolean isFailed() {
 		return this.isFailed;
 	}
+
+	/**
+	 * @param connectionSocket
+	 * @return
+	 */
+	public boolean isAttacker(Socket socket) {
+		return this.attackers.contains(socket.getInetAddress().toString());
+	}
 }

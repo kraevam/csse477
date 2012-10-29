@@ -46,6 +46,10 @@ public class ConnectionManager {
 	}
 	
 	public void startHandler(Socket connectionSocket) {
+		if(ServerMonitor.INSTANCE.isDegraded() &&
+				ServerMonitor.INSTANCE.isAttacker(connectionSocket))
+			return;
+		
 		ConnectionHandler handler = new ConnectionHandler(server, connectionSocket);
 		//new Thread(handler).start();
 		executor.execute(handler);
