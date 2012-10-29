@@ -122,6 +122,7 @@ public class Server implements Runnable {
 			this.welcomeSocket = new ServerSocket(port);
 			
 			ConnectionManager manager = new ConnectionManager(this);
+
 			// Now keep welcoming new connections until stop flag is set to true
 			while(true) {
 				// Listen for incoming socket connection
@@ -132,6 +133,7 @@ public class Server implements Runnable {
 					break;
 				
 				// Create a handler for this incoming connection and start the handler in a new thread
+
 				String remoteIP = connectionSocket.getInetAddress().getHostAddress();
 				int remotePort = connectionSocket.getPort();
 				
@@ -180,6 +182,4 @@ public class Server implements Runnable {
 			return this.welcomeSocket.isClosed();
 		return true;
 	}
-
 }
-
