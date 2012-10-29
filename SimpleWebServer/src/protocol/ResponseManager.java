@@ -30,6 +30,7 @@ package protocol;
 
 import java.io.File;
 import java.io.OutputStream;
+import java.net.SocketException;
 import java.util.Date;
 
 import util.DateUtil;
@@ -111,14 +112,16 @@ public class ResponseManager {
 	/**
 	 * @param status
 	 */
-	public void addBadResponse(int status) {
+	public void addBadResponse(int status) throws SocketException {
 		//TODO: Add other codes.
 
 		HttpResponse response = null;
 		if(status == Protocol.BAD_REQUEST_CODE) {
-			response = HttpResponseFactory.create400BadRequest(Protocol.CLOSE);
+			response = HttpResponseFactory.create400BadRequest(Protocol.OPEN);
 		} else if(status == Protocol.NOT_SUPPORTED_CODE) {
-			//TODO
+			response = HttpResponseFactory.create505NotSupported(Protocol.OPEN);
+		} else if(status == Protocol.NOT_IMPLEMENTED) {
+			response = HttpResponseFactory.create501NotImplemented(Protocol.OPEN);
 		}
 
 		if(response != null) {

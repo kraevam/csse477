@@ -29,6 +29,7 @@
 package protocol;
 
 import java.io.InputStream;
+import java.net.SocketException;
 import java.util.LinkedList;
 import java.util.Queue;
 
@@ -61,20 +62,35 @@ public class RequestManager implements Runnable {
 		// At this point we have the input and output stream of the socket
 		// Now lets create a HttpRequest object
 		HttpRequest request;
+		long start, end;
+		int status;
 		
 		while (this.queue.size() < MAXALLOWED) {
+			start = System.currentTimeMillis();
+			status = -1;
+			
 			try {
 				request = HttpRequest.read(in);
 				this.addRequest(request);
 				
 			} catch (ProtocolException pe) {
-				int status = pe.getStatus();
-				this.handler.addBadResponse(status);
+				status = pe.getStatus();
 			} catch (Exception e) {
 				e.printStackTrace();
 				// For any other error, we will create bad request response
-				this.handler.addBadResponse(Protocol.BAD_REQUEST_CODE);
+				status = Protocol.BAD_REQUEST_CODE;
 			}
+			
+			if(status != -1)
+				try {
+					this.handler.addBadResponse(status);
+				} catch (Exception e) {
+					e.printStackTrace();
+					break;
+				}
+			
+			end = System.currentTimeMillis();
+			this.handler.incrementServiceTime(end-start);
 		}
 		this.overloaded  = true;
 	}

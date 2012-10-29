@@ -25,6 +25,7 @@ import java.io.IOException;
 import java.io.InputStream;
 import java.io.OutputStream;
 import java.net.Socket;
+import java.net.SocketException;
 
 import protocol.HttpRequest;
 import protocol.HttpResponse;
@@ -86,27 +87,35 @@ public class ConnectionHandler implements Runnable {
 	 * and sends the response back to the client (web browser).
 	 */
 	public void run() {
+		new Thread(reqManager).start();
+		
 		// Get the start time
 		long start = System.currentTimeMillis();
+		long deadline = start + 15000;
+		
+		while (!reqManager.isOverloaded()) {
+			start = System.currentTimeMillis();
+			HttpRequest request = reqManager.getNextRequest();
 
-		// Increment number of connections by 1
-		server.incrementConnections(1);
-		
-		new Thread(this.reqManager).start();
-		
-		while (!this.reqManager.isOverloaded()) {
-			HttpRequest request = this.reqManager.getNextRequest();
-			
-			if (request == null) {
-				try {
-					Thread.sleep(20);
-				} catch (InterruptedException e) {
-					e.printStackTrace();
+			try {
+				if (request == null) {
+					if (System.currentTimeMillis() > deadline)
+						break;
+					Thread.sleep(40);
+				} else {
+					if (!reqManager.isServiceable())
+						resManager.addBadResponse(Protocol.SERVICE_UNAVAILABLE);
+					else
+						resManager.respond(request);
+					
+					server.incrementConnections(1);
+					long end = System.currentTimeMillis();
+					server.incrementServiceTime(end-start);
+					
+					deadline = end + 15000;
 				}
-			} else if (!this.reqManager.isServiceable()) {
-				this.resManager.addBadResponse(Protocol.SERVICE_UNAVAILABLE);
-			} else {
-				this.resManager.respond(request);
+			} catch (Exception e) {
+				e.printStackTrace();
 			}
 		}
 		
@@ -115,13 +124,16 @@ public class ConnectionHandler implements Runnable {
 		} catch (IOException e) {
 			e.printStackTrace();
 		}
-		
-		// Get the end time
-		long end = System.currentTimeMillis();
-		this.server.incrementServiceTime(end-start);
 	}
 	
-	public void addBadResponse(int status) {
+	public void addBadResponse(int status) throws SocketException {
 		this.resManager.addBadResponse(status);
+	}
+
+	/**
+	 * @param duration
+	 */
+	public void incrementServiceTime(long duration) {
+		this.server.incrementConnections(duration);
 	}
 }
