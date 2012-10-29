@@ -29,8 +29,6 @@
 package server;
 
 import java.net.Socket;
-import java.util.ArrayList;
-import java.util.List;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 
@@ -41,18 +39,15 @@ import java.util.concurrent.Executors;
 public class ConnectionManager {
 	private Server server;
 	private ExecutorService executor;
-	private List<ConnectionHandler> allConnections;
 
 	public ConnectionManager(Server server) {
 		this.server = server;
 		this.executor = Executors.newCachedThreadPool();
-		this.allConnections = new ArrayList<ConnectionHandler>();
 	}
 	
 	public void startHandler(Socket connectionSocket) {
 		ConnectionHandler handler = new ConnectionHandler(server, connectionSocket);
 		//new Thread(handler).start();
 		executor.execute(handler);
-		this.allConnections.add(handler);
 	}
 }

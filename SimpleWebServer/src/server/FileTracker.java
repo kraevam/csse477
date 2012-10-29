@@ -48,7 +48,7 @@ public enum FileTracker {
 
 	INSTANCE;
 	
-	private static final int MIN_REQUESTS_FOR_CACHING = 100;
+	private static final int MIN_REQUESTS_FOR_CACHING = 10;
 	private static final int MAX_FILE_SIZE = 100*1024*1024; // 100 MB
 	
 	private ConcurrentHashMap<String, AtomicLong> requestsPerFile;

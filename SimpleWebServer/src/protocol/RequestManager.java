@@ -28,14 +28,13 @@
  
 package protocol;
 
-import java.io.IOException;
 import java.io.InputStream;
 import java.net.SocketException;
 import java.util.LinkedList;
 import java.util.Queue;
-import java.util.concurrent.ConcurrentLinkedQueue;
 
 import server.ConnectionHandler;
+import server.ServerMonitor;
 
 /**
  * 
@@ -54,7 +53,7 @@ public class RequestManager implements Runnable {
 	
 	public RequestManager(ConnectionHandler handler, InputStream in) {
 		this.handler = handler;
-		this.queue = new ConcurrentLinkedQueue<HttpRequest>();
+		this.queue = new LinkedList<HttpRequest>();
 		this.in = in;
 		this.isClosed = false;
 	}
@@ -124,7 +123,7 @@ public class RequestManager implements Runnable {
 		if(this.queue.size() > MAX_ALLOWED) {
 			this.overloaded = true;
 		}
-		
+		ServerMonitor.INSTANCE.addRequest(this.handler.getSocket().getInetAddress().toString());
 	}
 	
 	public HttpRequest getNextRequest() {

@@ -1,41 +1,83 @@
 package server;
 
+import java.net.Socket;
+import java.util.ArrayList;
 import java.util.Collections;
 import java.util.HashMap;
+import java.util.List;
 import java.util.Map;
-
-import protocol.HttpRequest;
 
 /**
  * 
  * @author Marina Kraeva (kraevam@rose-hulman.edu)
  */
-public class ServerMonitor {
+public enum ServerMonitor {
 
-	private static final int MAX_CONNECTIONS_PER_CLIENT = 1000;
-	private static Map<String, Integer> connectionsPerClient = Collections.synchronizedMap(new HashMap<String, Integer>());
+	INSTANCE;
+	
+	public static final int MAX_CONNECTIONS_PER_CLIENT = 150;
+	public static final int MAX_DESIRABLE_CONNECTIONS_PER_CLIENT = 100;
+	private Map<String, Integer> connectionsPerClient;
+	private boolean isDegraded;
+	private boolean isFailed;
+	private List<String> attackers;
 	
 	/**
 	 * 
 	 */
-	public ServerMonitor() {
-		// TODO Auto-generated constructor stub
+	private ServerMonitor() {
+		this.connectionsPerClient = Collections.synchronizedMap(new HashMap<String, Integer>());
+		this.attackers = new ArrayList<String>();
+		this.isDegraded = false;
+		this.isFailed = false;
 	}
 
-	public static void addRequest(String client) {
-		if(!connectionsPerClient.containsKey(client)) {
-			connectionsPerClient.put(client, 1);
+	public void addRequest(String clientIP) {
+		if(!connectionsPerClient.containsKey(clientIP)) {
+			connectionsPerClient.put(clientIP, 1);
 		} else {
-			int currentConnections = connectionsPerClient.get(client);
-			connectionsPerClient.put(client, currentConnections + 1);
+			int currentConnections = connectionsPerClient.get(clientIP);
+			connectionsPerClient.put(clientIP, currentConnections + 1);
+			if(currentConnections + 1 >= MAX_CONNECTIONS_PER_CLIENT) {
+				this.isDegraded = true;
+			}
 		}
 	}
 	
-	public static void removeRequest(String client) {
+	public void removeRequest(String client) {
 		int currentClientCount = connectionsPerClient.get(client);
 		if (currentClientCount > 0) {
 			currentClientCount--;
-			connectionsPerClient.put(client, currentClientCount);
+			if (currentClientCount != 0) {
+				connectionsPerClient.put(client, currentClientCount);
+			} else {
+				connectionsPerClient.remove(client);
+			}
 		}
+		if (attackers.contains(client) && currentClientCount < MAX_DESIRABLE_CONNECTIONS_PER_CLIENT) {
+			attackers.remove(client);
+			if (attackers.isEmpty()) {
+				this.isDegraded = false;
+				this.isFailed = false;
+			}
+		}
+	}
+	
+	public void notifyDoSAttack(Socket socket) { 
+		System.out.print("Time: " + System.currentTimeMillis());
+		System.out.println(" DoS Attack detected on socket: " + socket.toString());
+		attackers.add(socket.getInetAddress().toString());
+	}
+	
+	public void notifyRecoveredFromDoS () {
+		this.isDegraded = false;
+	}
+	
+	public boolean isDegraded() {
+		return this.isDegraded;
+	}
+	
+	public boolean isFailed() {
+		return this.isFailed;
 	}
 }

@@ -103,11 +103,12 @@ public class ConnectionHandler implements Runnable {
 						break;
 					Thread.sleep(40);
 				} else {
-					if (!reqManager.isServiceable())
+					if (!reqManager.isServiceable() || ServerMonitor.INSTANCE.isDegraded())
 						resManager.addBadResponse(Protocol.SERVICE_UNAVAILABLE);
 					else
 						resManager.respond(request);
 					
+					ServerMonitor.INSTANCE.removeRequest(this.socket.getInetAddress().toString());
 					server.incrementConnections(1);
 					long end = System.currentTimeMillis();
 					server.incrementServiceTime(end-start);
@@ -117,6 +118,9 @@ public class ConnectionHandler implements Runnable {
 			} catch (Exception e) {
 				e.printStackTrace();
 			}
+		}
+		if(reqManager.isOverloaded()) {
+			ServerMonitor.INSTANCE.notifyDoSAttack(socket);
 		}
 		
 		try {

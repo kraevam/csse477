@@ -22,7 +22,6 @@
 package protocol;
 
 import java.io.BufferedOutputStream;
-import java.io.ByteArrayInputStream;
 import java.io.File;
 import java.io.OutputStream;
 import java.nio.ByteBuffer;
