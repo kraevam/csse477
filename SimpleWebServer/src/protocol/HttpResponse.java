@@ -24,7 +24,6 @@ package protocol;
 import java.io.BufferedOutputStream;
 import java.io.File;
 import java.io.OutputStream;
-import java.nio.ByteBuffer;
 import java.util.Collections;
 import java.util.Map;
 
@@ -144,20 +143,19 @@ public class HttpResponse {
 		// We are reading a file
 		if(this.getStatus() == Protocol.OK_CODE && file != null) {
 			// Process text documents
-			ByteBuffer fileBuffer = FileTracker.INSTANCE.getFileContents(file.getPath());
+			byte[] buffer = FileTracker.INSTANCE.getFileContents(file.getPath());
 			
-			byte[] buffer = new byte[Protocol.CHUNK_LENGTH];
+//			byte[] buffer = new byte[Protocol.CHUNK_LENGTH];
 			// While there is some bytes to read from file, read each chunk and send to the socket out stream
 			int offset = 0;
-			int bytesLeft = fileBuffer.limit();
-			while(bytesLeft >= Protocol.CHUNK_LENGTH) {
-				fileBuffer.get(buffer, offset, Protocol.CHUNK_LENGTH);
-				out.write(buffer, 0, Protocol.CHUNK_LENGTH);
+			int bytesLeft = buffer.length;
+			while(bytesLeft > Protocol.CHUNK_LENGTH) {
+				out.write(buffer, offset, Protocol.CHUNK_LENGTH);
+				offset += Protocol.CHUNK_LENGTH;
 				bytesLeft -= Protocol.CHUNK_LENGTH;
 			}
 			if (bytesLeft > 0) {
-				fileBuffer.get(buffer, offset, bytesLeft);
-				out.write(buffer, 0, bytesLeft);
+				out.write(buffer, offset, bytesLeft);
 			}
 			
 		}

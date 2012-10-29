@@ -25,17 +25,13 @@
  * NY 13699-5722
  * http://clarkson.edu/~rupakhcr
  */
- 
+
 package server;
 
 import java.io.File;
+import java.io.FileInputStream;
 import java.io.FileNotFoundException;
 import java.io.IOException;
-import java.io.RandomAccessFile;
-import java.nio.ByteBuffer;
-import java.nio.ByteOrder;
-import java.nio.channels.FileChannel;
-import java.nio.channels.FileChannel.MapMode;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.atomic.AtomicLong;
 
@@ -47,20 +43,20 @@ import java.util.concurrent.atomic.AtomicLong;
 public enum FileTracker {
 
 	INSTANCE;
-	
+
 	private static final int MIN_REQUESTS_FOR_CACHING = 10;
 	private static final int MAX_FILE_SIZE = 100*1024*1024; // 100 MB
-	
+
 	private ConcurrentHashMap<String, AtomicLong> requestsPerFile;
-	private ConcurrentHashMap<String, ByteBuffer> fileToContents;
+	private ConcurrentHashMap<String, byte[]> fileToContents;
 	private ConcurrentHashMap<String, Long> fileToDateModified;
-	
+
 	private FileTracker() {
 		this.requestsPerFile = new ConcurrentHashMap<String, AtomicLong>();
-		this.fileToContents = new ConcurrentHashMap<String, ByteBuffer>();
+		this.fileToContents = new ConcurrentHashMap<String, byte[]>();
 		this.fileToDateModified = new ConcurrentHashMap<String, Long>();
 	}
-	
+
 	public long getFileSize(String filePath) throws FileNotFoundException {
 		File file = new File(filePath);
 		if (!file.exists() || !file.isFile()) {
@@ -68,13 +64,13 @@ public enum FileTracker {
 		}
 		return file.length();
 	}
-	
-	public ByteBuffer getFileContents(String filePath) throws FileNotFoundException{		
+
+	public byte[] getFileContents(String filePath) throws FileNotFoundException{		
 		File file = new File(filePath);
 		if (!file.exists() || !file.isFile()) {
 			throw new FileNotFoundException();
 		}
-		
+
 		incrementFileRequests(file);
 		if (fileToContents.containsKey(file.getAbsolutePath())) {
 			long lastModified = file.lastModified();
@@ -83,7 +79,7 @@ public enum FileTracker {
 				return fileToContents.get(file.getAbsolutePath());
 			} else {
 				// File has changed since last update; update it in the maps
-				ByteBuffer contents = getFileContents(file);
+				byte[] contents = getFileContents(file);
 				fileToContents.put(file.getAbsolutePath(), contents);
 				fileToDateModified.put(file.getAbsolutePath(), lastModified);
 				return contents;
@@ -92,24 +88,23 @@ public enum FileTracker {
 			return getFileContents(file);
 		}
 	}
-	
-	private ByteBuffer getFileContents(File file) throws FileNotFoundException{
-		FileChannel channel = null;
-		RandomAccessFile raf = new RandomAccessFile(file, "r");
-		channel = raf.getChannel();
 
-		ByteBuffer buf = null;
+	private byte[] getFileContents(File file) throws FileNotFoundException{
+		FileInputStream fs = new FileInputStream(file);
+		final int fileSize = (int) file.length();
+		byte[] buf = new byte[fileSize];
 		try {
-			buf = channel.map(MapMode.READ_ONLY, 0L, file.length());
-		} catch (IOException e) {
-			// Log problem to a file?
-			e.printStackTrace();
+			fs.read(buf);
+		} catch (IOException e1) {
+			// TODO Auto-generated catch block
+			e1.printStackTrace();
 		}
-		buf.order(ByteOrder.LITTLE_ENDIAN);
+		
 		try {
-			raf.close();
+			fs.close();
 		} catch (IOException e) {
-			// not such a big deal
+			// TODO Auto-generated catch block
+			e.printStackTrace();
 		}
 		return buf;
 
@@ -121,12 +116,12 @@ public enum FileTracker {
 		if (oldValue != null) {
 			requestsCount = oldValue.incrementAndGet();
 		}
-		
+
 		if(requestsCount >= MIN_REQUESTS_FOR_CACHING) {
 			addFileToCache(file);
 		}
 	}
-	
+
 	private void addFileToCache(File file) throws FileNotFoundException {
 		if (!file.exists()) {
 			// shouldn't come to this, since we already check file existence before calling this method
@@ -136,9 +131,9 @@ public enum FileTracker {
 			// We don't want big files in memory!
 			return;
 		}
-		
+
 		long lastModified = file.lastModified();
-		ByteBuffer contents = getFileContents(file);
+		byte[] contents = getFileContents(file);
 		fileToContents.put(file.getAbsolutePath(), contents);
 		fileToDateModified.put(file.getAbsolutePath(), lastModified);		
 	}
