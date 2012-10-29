@@ -26,6 +26,8 @@ import gui.WebServer;
 import java.net.InetAddress;
 import java.net.ServerSocket;
 import java.net.Socket;
+import java.util.HashMap;
+import java.util.Map;
 
 /**
  * This represents a welcoming server for the incoming
@@ -43,6 +45,7 @@ public class Server implements Runnable {
 	private long serviceTime;
 	
 	private WebServer window;
+	
 	/**
 	 * @param rootDirectory
 	 * @param port
@@ -118,19 +121,28 @@ public class Server implements Runnable {
 		try {
 			this.welcomeSocket = new ServerSocket(port);
 			
+			ConnectionManager manager = new ConnectionManager(this);
 			// Now keep welcoming new connections until stop flag is set to true
 			while(true) {
 				// Listen for incoming socket connection
 				// This method block until somebody makes a request
 				Socket connectionSocket = this.welcomeSocket.accept();
-				
 				// Come out of the loop if the stop flag is set
 				if(this.stop)
 					break;
 				
 				// Create a handler for this incoming connection and start the handler in a new thread
-				ConnectionHandler handler = new ConnectionHandler(this, connectionSocket);
-				new Thread(handler).start();
+				String remoteIP = connectionSocket.getInetAddress().getHostAddress();
+				int remotePort = connectionSocket.getPort();
+				
+				Map<String, Integer> requestsToIP = new HashMap<String, Integer>();
+				if (requestsToIP.containsKey(remoteIP)) {
+					requestsToIP.put(remoteIP, requestsToIP.get(remoteIP) + 1);
+				} else {
+					requestsToIP.put(remoteIP, 1);
+				}
+				
+				manager.startHandler(connectionSocket);
 			}
 			this.welcomeSocket.close();
 		}
@@ -168,4 +180,6 @@ public class Server implements Runnable {
 			return this.welcomeSocket.isClosed();
 		return true;
 	}
+
 }
+

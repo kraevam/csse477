@@ -21,16 +21,15 @@
  
 package protocol;
 
-import java.io.BufferedInputStream;
 import java.io.BufferedOutputStream;
+import java.io.ByteArrayInputStream;
 import java.io.File;
-import java.io.FileInputStream;
-import java.io.FileReader;
-import java.io.InputStreamReader;
 import java.io.OutputStream;
-import java.io.PrintStream;
+import java.nio.ByteBuffer;
 import java.util.Collections;
 import java.util.Map;
+
+import server.FileTracker;
 
 /**
  * Represents a response object for HTTP.
@@ -146,9 +145,8 @@ public class HttpResponse {
 		// We are reading a file
 		if(this.getStatus() == Protocol.OK_CODE && file != null) {
 			// Process text documents
-			FileInputStream fileInStream = new FileInputStream(file);
-			BufferedInputStream inStream = new BufferedInputStream(fileInStream, Protocol.CHUNK_LENGTH);
-			
+			ByteBuffer fileBuffer = FileTracker.INSTANCE.getFileContents(file.getPath());
+			ByteArrayInputStream inStream = new ByteArrayInputStream(fileBuffer.array());
 			byte[] buffer = new byte[Protocol.CHUNK_LENGTH];
 			int bytesRead = 0;
 			// While there is some bytes to read from file, read each chunk and send to the socket out stream
